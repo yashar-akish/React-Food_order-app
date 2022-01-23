@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import React, { useContext, useState } from "react";
 
 import Modal from "../UI/Modal";
 import CartContext from "../../store/cart-context";
@@ -10,6 +10,8 @@ import classes from "./Cart.module.css";
 const Cart = (props) => {
 
   const [isCheckout, setIsCheckout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [didSubmit, setDidSubmit] = useState(false);
 
   const cartCtx = useContext(CartContext);
   const totalAmount = `$${cartCtx.totalAmount.toFixed(2)}`;
@@ -50,17 +52,53 @@ const Cart = (props) => {
     </div>
   );
 
-  return (
-    <Modal onCloseHandle={props.onCloseCart}>
+  const submitOrderHandler = async (userData) => {
+    setIsSubmitting(true);
+
+    await fetch('https://react-http-4c059-default-rtdb.firebaseio.com/orders.json', {
+      method: 'POST',
+      body: JSON.stringify({
+        user: userData,
+        orderItems: cartCtx.items
+      })
+    });
+
+    setIsSubmitting(false);
+    setDidSubmit(true);
+    cartCtx.clearCart();
+  };
+
+  const cartModalContent = (
+    <React.Fragment>
       {cartItems}
       <div className={classes.total}>
         <span>Total Amount</span>
         <span>{totalAmount}</span>
       </div>
 
-      {isCheckout && <Checkout onCancel={props.onCloseCart}/>}
+      {isCheckout && <Checkout onConfirm={submitOrderHandler} onCancel={props.onCloseCart}/>}
       {!isCheckout && modalActions}
-     
+    </React.Fragment>
+  );
+
+  const isSubmittingModalContent = <p>Sending the order's data...</p>;
+
+  const didSubmitModalContent = (
+    <React.Fragment>
+      <p>Successfully sent the order.</p>
+      <div className={classes.actions}>
+        <button className={classes.button} onClick={props.onCloseCart}>
+          OK
+        </button>
+      </div>
+    </React.Fragment>
+  );
+
+  return (
+    <Modal onCloseHandle={props.onCloseCart}>
+      {!isSubmitting && !didSubmit && cartModalContent}
+      {isSubmitting && isSubmittingModalContent}
+      {!isSubmitting && didSubmit && didSubmitModalContent}
     </Modal>
   );
 };
